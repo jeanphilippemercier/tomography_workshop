@@ -106,6 +106,8 @@ Visualizing the results
    The velocity models produced by the tomography software need to be converted 
    to VTK. To convert the model into VTK the script "EKImageData2VTK" is used.
 
+.. code-block:: bash
+    EKImageData2VTK --idata IDATA --vtype P/S --outfile OUTFILE
 
 Indices and tables
 ==================
