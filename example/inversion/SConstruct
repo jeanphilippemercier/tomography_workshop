@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+#
+# @Author : Jean-Pascal Mercier <jean-pascal.mercier@agsis.com>
+#
+# @Copyright (C) 2010 Jean-Pascal Mercier
+#
+# All rights reserved.
+#
+
+import slopes       # Importing slope API
+
+import agstd.log
+import numpy as np
+
+from glob import glob
+
+import logging
+logging.getLogger().setLevel(logging.INFO)
+
+
+env = Environment(tools = ['Lotic'])     # Loading Lotic into SCons environment
+
+env['REPORT_ROOT'] = 'build/report'
+env['REPORT_RESIDUAL_HISTOGRAM_RANGE'] = [-0.015, 0.015]
+
+
+
+grid = slopes.GridDescription(env, (0, 0, 0), (101, 101, 101), 5, padding = 50.0) # origin, shape and spacing
+
+# Defining the initial velocity value
+P_IVALUE = 5000             # Initial Velocity in m/s
+
+# Creation of the Database Extraction plan
+# fetch_plan.set_event_filter(np.arange(300,1000))
+
+imodel = grid.get_homogeneous_grid("./build/initial_P.pickle", P_IVALUE)
+
+# Creating the inversion plan and adding our velocity grid to the plan
+
+evnfile = "build/events.pickle"
+stafile = "build/stations.pickle"
+
+plan = slopes.InversionPlan(env, evnfile, stafile)
+plan.insert_velocity_grid("P", imodel, np.sort(glob("build/P_*.pickle")))
+
+# Description of the behavior of the prior and the post smoothing.
+#POST_SMOOTHING = 5  # in meters
+
+EXPSIZE = 20
+EXPPARAM = 200
+
+INIT_PRIOR  = 1e-12
+VPRIOR = 1e-13
+EPRIOR = 1e-7
+PRIOR_RANGE = (INIT_PRIOR, INIT_PRIOR)
+
+# Determination of the inversion parameter as exponentials
+nbiter = 20
+vp = VPRIOR*np.ones(nbiter)
+ep = EPRIOR*np.ones(nbiter)
+sp = np.linspace(5.0,5.0,nbiter) #post smoothing in meters
+
+for i, (p,e,s) in enumerate(zip(vp,ep,sp)):
+
+    #if i<=10:
+    plan.set_grid_inversion("P", prior = p, post_smoothing=s)# post_smoothing = s)
+    #if i%2 == 0 and i > 0:
+        #plan.set_event_time_correction(1000)
+        #plan.set_event_position(prior = e)
+    #elif i>10 and i<=20:
+    #    plan.set_grid_inversion("P", prior = p/10, post_smoothing = s)
+    #else:
+    #    plan.set_grid_inversion("P", prior = p/100, post_smoothing = s)
+    #if i==10:# or i==20:
+    #    plan.set_event_position(prior = e)
+    #if i==20:
+
+#    plan.set_event_position(prior = e)
+
+    plan.push_inversion("build/tomography_%d" %i, itype = "linearcg", weighting = slopes.GaussianWeighting(2)) # Pushing 1 inversion
+
+    #if i%10 == 0 and i > 0:
+    #    plan.set_event_time_correction(0)
+    #    plan.push_inversion("build/tomography_%d_time" %i, itype = "linearcg", weighting = slopes.GaussianWeighting(2)) # Pushing 1 inversion
+
+# Telling scons which target we want to build
+env.Default(plan.current.vgrids["P"])
+
+# Using the scons timestamp combined with md5 for fast determination of
+# modified targets
