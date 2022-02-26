@@ -1,5 +1,5 @@
 import eikonal.data as data
-import cPickle as pickle
+import pickle
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
 # Defining the model parameters
