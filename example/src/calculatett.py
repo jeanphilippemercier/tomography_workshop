@@ -3,7 +3,7 @@ from agstd.cli import ProgressBar
 import eikonal.solver as esolver
 import eikonal.data as data
 import numpy as np
-import cPickle as pickle
+import pickle
 from scipy.ndimage.interpolation import map_coordinates
 
 import logging
